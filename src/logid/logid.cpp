@@ -18,6 +18,7 @@
 
 #include <DeviceManager.h>
 #include <InputDevice.h>
+#include <TouchpadDevice.h>
 #include <util/task.h>
 #include <util/log.h>
 #include <algorithm>
@@ -29,6 +30,7 @@
 #endif
 
 static constexpr auto virtual_input_name = "LogiOps Virtual Input";
+static constexpr auto virtual_touchpad_name = "LogiOps Virtual Touchpad";
 static constexpr auto default_config = "/etc/logid.cfg";
 
 using namespace logid;
@@ -134,6 +136,7 @@ int main(int argc, char** argv) {
     readCliOptions(argc, argv, options);
     std::shared_ptr<Configuration> config;
     std::shared_ptr<InputDevice> virtual_input;
+    std::shared_ptr<TouchpadDevice> virtual_touchpad;
 
 
     /* Set stdout buff to Null so that loging system like journal
@@ -167,8 +170,16 @@ int main(int argc, char** argv) {
         return EXIT_FAILURE;
     }
 
+    try {
+        virtual_touchpad = std::make_unique<TouchpadDevice>(virtual_touchpad_name);
+    } catch (std::system_error& e) {
+        logPrintf(ERROR, "Could not create touchpad device: %s", e.what());
+        return EXIT_FAILURE;
+    }
+
     // Device manager runs on its own I/O thread asynchronously
-    auto device_manager = DeviceManager::make<DeviceManager>(config, virtual_input, server);
+    auto device_manager = DeviceManager::make<DeviceManager>(
+            config, virtual_input, virtual_touchpad, server);
 
     device_manager->enumerate();
 
