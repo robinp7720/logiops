@@ -51,7 +51,6 @@ namespace logid {
     protected:
         DeviceManager(std::shared_ptr<Configuration> config,
                       std::shared_ptr<InputDevice> virtual_input,
-                      std::shared_ptr<TouchpadDevice> virtual_touchpad,
                       std::shared_ptr<ipcgull::server> server);
 
         void addDevice(std::string path) final;
@@ -86,7 +85,8 @@ namespace logid {
         std::shared_ptr<ipcgull::server> _server;
         std::shared_ptr<Configuration> _config;
         std::shared_ptr<InputDevice> _virtual_input;
-        std::shared_ptr<TouchpadDevice> _virtual_touchpad;
+        mutable std::shared_ptr<TouchpadDevice> _virtual_touchpad;
+        mutable std::mutex _touchpad_lock;
 
         std::shared_ptr<ipcgull::node> _root_node;
 

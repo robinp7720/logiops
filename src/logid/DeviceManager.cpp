@@ -17,24 +17,24 @@
  */
 
 #include <DeviceManager.h>
+#include <TouchpadDevice.h>
 #include <backend/Error.h>
 #include <util/log.h>
 #include <thread>
 #include <sstream>
 #include <utility>
 #include <ipc_defs.h>
+#include <system_error>
 
 using namespace logid;
 using namespace logid::backend;
 
 DeviceManager::DeviceManager(std::shared_ptr<Configuration> config,
                              std::shared_ptr<InputDevice> virtual_input,
-                             std::shared_ptr<TouchpadDevice> virtual_touchpad,
                              std::shared_ptr<ipcgull::server> server) :
         backend::raw::DeviceMonitor(),
         _server(std::move(server)), _config(std::move(config)),
         _virtual_input(std::move(virtual_input)),
-        _virtual_touchpad(std::move(virtual_touchpad)),
         _root_node(ipcgull::node::make_root("")),
         _device_node(ipcgull::node::make_root("devices")),
         _receiver_node(ipcgull::node::make_root("receivers")) {
@@ -55,6 +55,16 @@ std::shared_ptr<InputDevice> DeviceManager::virtualInput() const {
 }
 
 std::shared_ptr<TouchpadDevice> DeviceManager::virtualTouchpad() const {
+    static constexpr auto virtual_touchpad_name = "LogiOps Virtual Touchpad";
+    std::lock_guard<std::mutex> lock(_touchpad_lock);
+    if (!_virtual_touchpad) {
+        try {
+            _virtual_touchpad = std::make_shared<TouchpadDevice>(virtual_touchpad_name);
+        } catch (std::system_error& e) {
+            logPrintf(ERROR, "Could not create touchpad device: %s", e.what());
+        }
+    }
+
     return _virtual_touchpad;
 }
 

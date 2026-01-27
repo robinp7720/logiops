@@ -26,7 +26,7 @@ TouchpadAction::TouchpadAction(Device* device, config::TouchpadAction& config,
         _x_remainder(0.0),
         _y_remainder(0.0),
         _config(config),
-        _touchpad(device->virtualTouchpad()) {
+        _touchpad(nullptr) {
 }
 
 void TouchpadAction::press() {
@@ -35,6 +35,8 @@ void TouchpadAction::press() {
     _applyConfigLocked();
     _x_remainder = 0.0;
     _y_remainder = 0.0;
+    if (!_touchpad)
+        _touchpad = _device->virtualTouchpad();
     if (_touchpad) {
         _touchpad->setRange(_width, _height);
         _touchpad->beginContacts(_fingers, _width / 2, _height / 2);
