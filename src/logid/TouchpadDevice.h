@@ -11,24 +11,24 @@ struct libevdev_uinput;
 namespace logid {
     class TouchpadDevice {
     public:
-        static constexpr int default_width = 1000;
-        static constexpr int default_height = 1000;
+        /* Units per millimetre advertised to libinput. 40 u/mm is ~1016 u/in,
+         * so one count of a 1000 DPI mouse moves the fingers about as far
+         * as the mouse itself moved. Without a resolution libinput guesses a
+         * 71x50 mm pad, which caps every gesture at a few centimetres. */
+        static constexpr int resolution = 40;
+        /* Contacts start in the middle of a 2 m square, so a gesture can
+         * travel a metre in any direction before it reaches an edge. */
+        static constexpr int size_mm = 2000;
+        static constexpr int range = resolution * size_mm;
         static constexpr int default_slots = 10;
 
-        TouchpadDevice(const char* name,
-                       int width = default_width,
-                       int height = default_height,
-                       int slots = default_slots);
+        explicit TouchpadDevice(const char* name, int slots = default_slots);
 
         ~TouchpadDevice();
 
-        void setRange(int width, int height);
-
-        [[nodiscard]] int width() const;
-        [[nodiscard]] int height() const;
         [[nodiscard]] int slots() const;
 
-        void beginContacts(int fingers, int start_x, int start_y);
+        void beginContacts(int fingers);
         void moveContacts(int dx, int dy);
         void endContacts();
 
@@ -44,16 +44,12 @@ namespace logid {
         void _sendEvent(uint type, uint code, int value);
         void _sendSyn();
         void _setToolButtons(int fingers, bool down);
-        int _clampX(int x) const;
-        int _clampY(int y) const;
         void _endContactsLocked();
 
         std::mutex _input_mutex;
         std::string _name;
         libevdev* _device{};
         libevdev_uinput* _ui_device{};
-        int _range_x;
-        int _range_y;
         int _max_slots;
         bool _active;
         int _active_fingers;

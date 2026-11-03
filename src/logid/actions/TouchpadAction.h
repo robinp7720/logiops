@@ -26,8 +26,6 @@ namespace logid::actions {
 
         int _fingers;
         double _scale;
-        int _width;
-        int _height;
         bool _invert_x;
         bool _invert_y;
         double _x_remainder;

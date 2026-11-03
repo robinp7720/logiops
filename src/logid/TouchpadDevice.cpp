@@ -17,10 +17,8 @@ namespace {
     }
 }
 
-TouchpadDevice::TouchpadDevice(const char* name, int width, int height, int slots) :
+TouchpadDevice::TouchpadDevice(const char* name, int slots) :
         _name(name),
-        _range_x(width > 0 ? width : default_width),
-        _range_y(height > 0 ? height : default_height),
         _max_slots(slots > 0 ? slots : default_slots),
         _active(false),
         _active_fingers(0),
@@ -32,34 +30,11 @@ TouchpadDevice::~TouchpadDevice() {
     _destroyDevice();
 }
 
-void TouchpadDevice::setRange(int width, int height) {
-    const int next_width = width > 0 ? width : default_width;
-    const int next_height = height > 0 ? height : default_height;
-
-    std::lock_guard<std::mutex> lock(_input_mutex);
-    if (_range_x == next_width && _range_y == next_height)
-        return;
-
-    _endContactsLocked();
-    _range_x = next_width;
-    _range_y = next_height;
-    _destroyDevice();
-    _createDevice();
-}
-
-int TouchpadDevice::width() const {
-    return _range_x;
-}
-
-int TouchpadDevice::height() const {
-    return _range_y;
-}
-
 int TouchpadDevice::slots() const {
     return _max_slots;
 }
 
-void TouchpadDevice::beginContacts(int fingers, int start_x, int start_y) {
+void TouchpadDevice::beginContacts(int fingers) {
     std::lock_guard<std::mutex> lock(_input_mutex);
     if (fingers < 1)
         return;
@@ -73,8 +48,8 @@ void TouchpadDevice::beginContacts(int fingers, int start_x, int start_y) {
     _contacts.clear();
     _contacts.reserve(fingers);
 
-    const int x = _clampX(start_x);
-    const int y = _clampY(start_y);
+    const int x = range / 2;
+    const int y = range / 2;
 
     for (int slot = 0; slot < fingers; ++slot) {
         if (_next_tracking_id > 65535)
@@ -100,8 +75,8 @@ void TouchpadDevice::moveContacts(int dx, int dy) {
 
     for (std::size_t slot = 0; slot < _contacts.size(); ++slot) {
         auto& contact = _contacts[slot];
-        contact.x = _clampX(contact.x + dx);
-        contact.y = _clampY(contact.y + dy);
+        contact.x = clamp_value(contact.x + dx, 0, range);
+        contact.y = clamp_value(contact.y + dy, 0, range);
         _sendEvent(EV_ABS, ABS_MT_SLOT, static_cast<int>(slot));
         _sendEvent(EV_ABS, ABS_MT_POSITION_X, contact.x);
         _sendEvent(EV_ABS, ABS_MT_POSITION_Y, contact.y);
@@ -137,17 +112,13 @@ void TouchpadDevice::_createDevice() {
 
     libevdev_enable_event_type(_device, EV_ABS);
 
-    input_absinfo abs_x{};
-    abs_x.minimum = 0;
-    abs_x.maximum = _range_x;
-    abs_x.value = _range_x / 2;
-    libevdev_enable_event_code(_device, EV_ABS, ABS_X, &abs_x);
-
-    input_absinfo abs_y{};
-    abs_y.minimum = 0;
-    abs_y.maximum = _range_y;
-    abs_y.value = _range_y / 2;
-    libevdev_enable_event_code(_device, EV_ABS, ABS_Y, &abs_y);
+    input_absinfo abs_pos{};
+    abs_pos.minimum = 0;
+    abs_pos.maximum = range;
+    abs_pos.value = range / 2;
+    abs_pos.resolution = resolution;
+    libevdev_enable_event_code(_device, EV_ABS, ABS_X, &abs_pos);
+    libevdev_enable_event_code(_device, EV_ABS, ABS_Y, &abs_pos);
 
     input_absinfo mt_slot{};
     mt_slot.minimum = 0;
@@ -159,8 +130,8 @@ void TouchpadDevice::_createDevice() {
     mt_tracking.maximum = 65535;
     libevdev_enable_event_code(_device, EV_ABS, ABS_MT_TRACKING_ID, &mt_tracking);
 
-    libevdev_enable_event_code(_device, EV_ABS, ABS_MT_POSITION_X, &abs_x);
-    libevdev_enable_event_code(_device, EV_ABS, ABS_MT_POSITION_Y, &abs_y);
+    libevdev_enable_event_code(_device, EV_ABS, ABS_MT_POSITION_X, &abs_pos);
+    libevdev_enable_event_code(_device, EV_ABS, ABS_MT_POSITION_Y, &abs_pos);
 
     int err = libevdev_uinput_create_from_device(_device,
                                                  LIBEVDEV_UINPUT_OPEN_MANAGED,
@@ -208,14 +179,6 @@ void TouchpadDevice::_setToolButtons(int fingers, bool down) {
 #ifdef BTN_TOOL_QUINTTAP
     _sendEvent(EV_KEY, BTN_TOOL_QUINTTAP, five ? 1 : 0);
 #endif
-}
-
-int TouchpadDevice::_clampX(int x) const {
-    return clamp_value(x, 0, _range_x);
-}
-
-int TouchpadDevice::_clampY(int y) const {
-    return clamp_value(y, 0, _range_y);
 }
 
 void TouchpadDevice::_endContactsLocked() {

@@ -19,8 +19,6 @@ TouchpadAction::TouchpadAction(Device* device, config::TouchpadAction& config,
         Action(device, interface_name),
         _fingers(default_fingers),
         _scale(default_scale),
-        _width(TouchpadDevice::default_width),
-        _height(TouchpadDevice::default_height),
         _invert_x(false),
         _invert_y(false),
         _x_remainder(0.0),
@@ -37,10 +35,8 @@ void TouchpadAction::press() {
     _y_remainder = 0.0;
     if (!_touchpad)
         _touchpad = _device->virtualTouchpad();
-    if (_touchpad) {
-        _touchpad->setRange(_width, _height);
-        _touchpad->beginContacts(_fingers, _width / 2, _height / 2);
-    }
+    if (_touchpad)
+        _touchpad->beginContacts(_fingers);
 }
 
 void TouchpadAction::release() {
@@ -91,14 +87,6 @@ void TouchpadAction::_applyConfigLocked() {
     _scale = _config.scale.value_or(default_scale);
     if (_scale <= 0)
         _scale = default_scale;
-
-    _width = _config.width.value_or(TouchpadDevice::default_width);
-    if (_width < 1)
-        _width = TouchpadDevice::default_width;
-
-    _height = _config.height.value_or(TouchpadDevice::default_height);
-    if (_height < 1)
-        _height = TouchpadDevice::default_height;
 
     _invert_x = _config.invert_x.value_or(false);
     _invert_y = _config.invert_y.value_or(false);

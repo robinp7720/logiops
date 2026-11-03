@@ -81,18 +81,14 @@ namespace logid::config {
         typedef actions::TouchpadAction action;
         std::optional<int> fingers;
         std::optional<double> scale;
-        std::optional<int> width;
-        std::optional<int> height;
         std::optional<bool> invert_x;
         std::optional<bool> invert_y;
 
         TouchpadAction() : signed_group<std::string>(
                 "type", "Touchpad",
-                {"fingers", "scale", "width", "height", "invert_x", "invert_y"},
+                {"fingers", "scale", "invert_x", "invert_y"},
                 &TouchpadAction::fingers,
                 &TouchpadAction::scale,
-                &TouchpadAction::width,
-                &TouchpadAction::height,
                 &TouchpadAction::invert_x,
                 &TouchpadAction::invert_y) {}
     };
